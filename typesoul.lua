@@ -61,6 +61,14 @@ Main:CreateButton("Auto Maze", function()
                 tween:Play()
                 tween.Completed:Wait()
                 print("Tween completed")
+
+                -- Fire the ClickDetector after tweening
+                if correcthollow and correcthollow:FindFirstChild("ClickDetector") then
+                    fireclickdetector(correcthollow.ClickDetector)
+                else
+                    warn("ClickDetector not found in correct hollow")
+                end
+
                 break
             end
         end
