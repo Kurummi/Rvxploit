@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Create settings table
 local set = {
@@ -21,7 +22,6 @@ local set = {
 
 -- Get player related variables
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 local camera = workspace.CurrentCamera
 
 -- Get game related variables
@@ -131,15 +131,14 @@ function actuallyAim()
             toAimAt = predictedPos
         end
         local ballPos = camera:WorldToScreenPoint(toAimAt + Vector3.new(0, -theBall.Size.Y / 2, 0))
-        local mousePos = camera:WorldToScreenPoint(Mouse.Hit.p)
+        local touchPos = UserInputService:GetLastInputType() == Enum.UserInputType.Touch and UserInputService:GetTouchInputs()[1].Position or Vector2.new()
         local aimAt = Vector2.new()
         local normalPos = Vector2.new(ballPos.X, ballPos.Y)
         if toChange then
             local cursorV2 = camera:WorldToScreenPoint(toChange.Position + Vector3.new(0, toChange.Size.Y / 2, 0))
-            local myMousePos = Vector2.new(mousePos.X, mousePos.Y)
             local cursorPos = Vector2.new(cursorV2.X, cursorV2.Y)
 
-            local difference = (myMousePos - cursorPos)
+            local difference = (touchPos - cursorPos)
             normalPos = normalPos + difference + Vector2.new(0, set.YOffset)
         end
         aimAt = normalPos
@@ -156,7 +155,10 @@ function actuallyAim()
                 task.delay(2, function()
                     hasWindedUp = false
                 end)
-                mouse1click()
+                UserInputService.InputBegan:Fire({
+                    UserInputType = Enum.UserInputType.Touch,
+                    UserInputState = Enum.UserInputState.Begin,
+                })
             end
             if hasWindedUp and not hasSwang then
                 local borderBox = workspace.Ignore.BGUI.BlackBoarder
@@ -191,7 +193,10 @@ function actuallyAim()
                 then
                     shouldAim = true
                     if ballMag <= set.HitDist then
-                        mouse1click()
+                        UserInputService.InputBegan:Fire({
+                            UserInputType = Enum.UserInputType.Touch,
+                            UserInputState = Enum.UserInputState.Begin,
+                        })
                         hasSwang = true
 
                         task.delay(2, function()
@@ -206,7 +211,7 @@ function actuallyAim()
         if set.AimWithMouse and not aiming and theBall then
             aiming = true
             local CFValue = Instance.new("CFrameValue")
-            CFValue.Value = CFrame.new(mousePos.X, mousePos.Y, 0)
+            CFValue.Value = CFrame.new(touchPos.X, touchPos.Y, 0)
             local con = true
             if set.tweenSpeed ~= 0 then
                 tween = TweenService:Create(
@@ -222,22 +227,16 @@ function actuallyAim()
                         aiming = false
                     end)
                 end)
-                theBall.Changed:Connect(function()
-                    if theBall and theBall.Parent then
-                        tween:Pause()
-
-                        local toAimAt = theBall.Position
-                        if predictedPos and predictedPos ~= Vector3.new() then
-                            toAimAt = predictedPos
-                        end
-                        ballPos = camera:WorldToScreenPoint(toAimAt)
-                        mousePos = camera:WorldToScreenPoint(Mouse.Hit.p)
+                theBall.Changed:Connect(function(p)
+                    if p == "Position" then
+                        local ballPos = camera:WorldToScreenPoint(toAimAt)
+                        touchPos = UserInputService:GetLastInputType() == Enum.UserInputType.Touch and UserInputService:GetTouchInputs()[1].Position or Vector2.new()
                         normalPos = Vector2.new(ballPos.X, ballPos.Y)
                         if toChange then
-                            cursorV2 = camera:WorldToScreenPoint(toChange.Position + Vector3.new(0, toChange.Size.Y / 2, 0))
-                            myMousePos = Vector2.new(mousePos.X, mousePos.Y)
-                            cursorPos = Vector2.new(cursorV2.X, cursorV2.Y)
-                            difference = (myMousePos - cursorPos)
+                            local cursorV2 = camera:WorldToScreenPoint(toChange.Position + Vector3.new(0, toChange.Size.Y / 2, 0))
+                            local myTouchPos = Vector2.new(touchPos.X, touchPos.Y)
+                            local cursorPos = Vector2.new(cursorV2.X, cursorV2.Y)
+                            local difference = (myTouchPos - cursorPos)
                             normalPos = normalPos + difference + Vector2.new(0, set.YOffset)
                         end
                         aimAt = normalPos
@@ -267,12 +266,17 @@ function actuallyAim()
 end
 
 function MouseMove(x, y)
-    local delta = Vector2.new(x, y) - UserInputService:GetMouseLocation()
-    UserInputService.MouseDeltaSensitivity = delta.Magnitude / 5
-    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+    local delta = Vector2.new(x, y) - UserInputService:GetTouchInputs()[1].Position
+    UserInputService.Touch.InputChanged:Connect(function(input)
+        if input.UserInputState == Enum.UserInputState.Change then
+            input.Position = input.Position + delta / 5
+        end
+    end)
 end
 
 RunService.RenderStepped:Connect(function()
-    Circle.Position = Vector2.new(Mouse.X, Mouse.Y + set.YOffset)
+    local touchPosition = UserInputService:GetLastInputType() == Enum.UserInputType.Touch and UserInputService:GetTouchInputs()[1].Position or Vector2.new()
+    Circle.Position = Vector2.new(touchPosition.X, touchPosition.Y + set.YOffset)
     actuallyAim()
 end)
+
