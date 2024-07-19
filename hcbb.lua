@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 
 -- Create settings table
 local set = {
-    AutoAimBat = false,
+    AutoAimBat = true,
     AutoHitBat = true,
     WindupDist = 67,
     HitDist = 17,
@@ -131,7 +131,7 @@ function actuallyAim()
             toAimAt = predictedPos
         end
         local ballPos = camera:WorldToScreenPoint(toAimAt + Vector3.new(0, -theBall.Size.Y / 2, 0))
-        local touchPos = UserInputService.TouchEnabled and UserInputService:GetTouchInputs()[1] and UserInputService:GetTouchInputs()[1].Position or Vector2.new()
+        local touchPos = UserInputService.TouchEnabled and getTouchPosition() or Vector2.new()
         local aimAt = Vector2.new()
         local normalPos = Vector2.new(ballPos.X, ballPos.Y)
         if toChange then
@@ -230,10 +230,12 @@ function actuallyAim()
                 theBall.Changed:Connect(function(p)
                     if p == "Position" then
                         local ballPos = camera:WorldToScreenPoint(toAimAt)
-                        touchPos = UserInputService.TouchEnabled and UserInputService:GetTouchInputs()[1] and UserInputService:GetTouchInputs()[1].Position or Vector2.new()
+                        touchPos = UserInputService.TouchEnabled and getTouchPosition() or Vector2.new()
                         normalPos = Vector2.new(ballPos.X, ballPos.Y)
                         if toChange then
-                            local cursorV2 = camera:WorldToScreenPoint(toChange.Position + Vector3.new(0, toChange.Size.Y / 2, 0))
+                            local cursorV2 = camera:WorldToScreenPoint(
+                                toChange.Position + Vector3.new(0, toChange.Size.Y / 2, 0)
+                            )
                             local cursorPos = Vector2.new(cursorV2.X, cursorV2.Y)
                             local difference = (touchPos - cursorPos)
                             normalPos = normalPos + difference + Vector2.new(0, set.YOffset)
@@ -264,8 +266,16 @@ function actuallyAim()
     end
 end
 
+function getTouchPosition()
+    local touchPositions = UserInputService:GetTouches()
+    if #touchPositions > 0 then
+        return touchPositions[1].Position
+    end
+    return Vector2.new()
+end
+
 function MouseMove(x, y)
-    local delta = Vector2.new(x, y) - (UserInputService.TouchEnabled and UserInputService:GetTouchInputs()[1] and UserInputService:GetTouchInputs()[1].Position or Vector2.new())
+    local delta = Vector2.new(x, y) - getTouchPosition()
     UserInputService.TouchMoved:Connect(function(input)
         if input.UserInputState == Enum.UserInputState.Change then
             input.Position = input.Position + delta / 5
@@ -274,7 +284,7 @@ function MouseMove(x, y)
 end
 
 RunService.RenderStepped:Connect(function()
-    local touchPosition = UserInputService.TouchEnabled and UserInputService:GetTouchInputs()[1] and UserInputService:GetTouchInputs()[1].Position or Vector2.new()
+    local touchPosition = getTouchPosition()
     Circle.Position = Vector2.new(touchPosition.X, touchPosition.Y + set.YOffset)
     actuallyAim()
 end)
